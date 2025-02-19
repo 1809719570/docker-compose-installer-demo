@@ -1,5 +1,5 @@
 #!/bin/python3
-
+import json
 import os
 import subprocess  
 import sys
@@ -71,21 +71,21 @@ def getOs():
     except FileNotFoundError:
         print(f"Can not run command:{cmd}.")
 
-def updateOs(os):
-    if os.isDeb():
-        result = subprocess.run(['apt', 'update'])
-        if result.returncode != 0:
-            return False
-        result = subprocess.run(["apt", 'upgrade', '-y'])
-        if result.returncode != 0:
-            return False
-    elif os.isDnf():
-        result = subprocess.run(['dnf', 'update'])
-        if result.returncode != 0:
-            return False
-    else:
-        return False
-    return True
+# def updateOs(os):
+#     if os.isDeb():
+#         result = subprocess.run(['apt', 'update'])
+#         if result.returncode != 0:
+#             return False
+#         result = subprocess.run(["apt", 'upgrade', '-y'])
+#         if result.returncode != 0:
+#             return False
+#     elif os.isDnf():
+#         result = subprocess.run(['dnf', 'update'])
+#         if result.returncode != 0:
+#             return False
+#     else:
+#         return False
+#     return True
 
 def run_command(command):
     """运行shell命令并捕获其输出和错误"""
@@ -143,13 +143,38 @@ def DnfsetupDocker():
     # Step 4: 开启Docker服务
     run_command("sudo service docker start")
 
+def SetUpDaemonJson():
+    # 定义要写入的JSON数据
+    docker_config = {
+        "registry-mirrors": ["https://ac23ba65b3fa44f884410dfed6bce0d7.mirror.swr.myhuaweicloud.com"],
+        "log-driver": "json-file",
+        "log-opts": {
+            "max-size": "100m",
+            "max-file": "10"
+        }
+    }
+
+    # 将JSON数据转换为字符串
+    config_str = json.dumps(docker_config, indent=4)
+
+    # 定义目标文件路径
+    target_file = "/etc/docker/daemon.json"
+
+    # 使用with语句打开文件，确保文件正确关闭
+    with open(target_file, 'w') as f:
+        # 写入JSON字符串到文件
+        f.write(config_str)
+    run_command("sudo service docker restart")
+
 def setupDocker(o: OsInfo):
     print("Set up docker.")
     result = os.system("which docker")
     if (not result == 0):
         if(o.isDeb()):
             DebsetupDocker()
+            SetUpDaemonJson()
         elif(o.isDnf()):
             DnfsetupDocker()
+            SetUpDaemonJson()
         print("Set up docker is completed.")
     return True

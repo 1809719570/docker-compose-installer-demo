@@ -2,24 +2,21 @@
 
 import os
 import subprocess
-import platform
-from platform import OsInfo
+# import platform
+# from platform import OsInfo
 
-def stopDepends(o: OsInfo):
+def stopDepends():
     print("Shutdown ...")
     os.chdir("depends")
-    if(o.isDeb()):
-        subprocess.run(['docker-compose', 'stop'])
-        return False
-    elif(o.isDnf()):
-        subprocess.run(['podman-compose', 'stop'])
-        return False
+    subprocess.run(['docker-compose', 'stop'])
     return True
 
 
 def shutdown():
-    result = stopDepends(platform.getOs())
+    result = stopDepends()
     if(result):
+        print("Stop successful.")
+    else:
         print("Stop failed.")
 
 shutdown()

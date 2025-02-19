@@ -1,7 +1,7 @@
 version: "3"
 services:
   coturn:
-    image: "coturn/coturn"
+    image: "nginx:${VERSION}"
     restart: unless-stopped
     ports:
       - "3478:3478/udp" # STUN/TURN UDP
@@ -14,24 +14,12 @@ services:
       - "5350:5350/tcp" # STUN/TURN TLS Alt port (RFC5780 support)
       - "49152:65535/udp" # UDP media ports for TURN relay
     volumes:
-      - ${DATA_DIR}/coturn/turnserver.conf:/etc/coturn/turnserver.conf
-  
-  minio:
-    image: "quay.io/minio/minio"
-    restart: unless-stopped
-    environment:
-      MINIO_ACCESS_KEY: "minio"
-      MINIO_SECRET_KEY: "minio1234567#"
-    volumes:
-      - ${DATA_DIR}/minio/data:/data
-    ports:
-      - 7001:7001
-      - 7002:7002
-    command: server -address ":7001" --console-address ":7002" /data  
-    privileged: true
+      - ${DATA_DIR}/nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - db
 
   db:
-    image: "mariadb:10.6.15"
+    image: "mariadb:${VERSION}"
     volumes:
       - /etc/localtime:/etc/localtime
       - ./mariadb/initdb.d:/docker-entrypoint-initdb.d
@@ -40,7 +28,7 @@ services:
       MYSQL_ROOT_PASSWORD: "okstar"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "mysqladmin" , "-h", "localhost","-uroot", "-pokstar", "ping"]  
+      test: ["CMD", "mysqladmin" , "-h", "localhost","-uroot", "-ppasswd", "ping"]
       timeout: 20s
       retries: 20
       interval: 10s
@@ -57,69 +45,4 @@ services:
       timeout: 5s  
       retries: 3
 
-  keycloak:
-    build:
-      context: ./keycloak
-    environment:
-      - KC_DB=mariadb
-      - KC_DB_USERNAME=root
-      - KC_DB_PASSWORD=okstar
-      - KC_DB_URL=jdbc:mariadb://db/keycloak?autoReconnect=true&useUnicode=true&characterEncoding=utf8
-      - KC_HOSTNAME_STRICT=false
-      - KC_PROXY=edge
-      - KC_PROXY_ADDRESS_FORWARDING=true
-      - KC_PROXY_HEADERS=xforwarded
-      - KC_HEALTH_ENABLED=true
-      - KC_METRICS_ENABLED=true
-      - KC_HTTP_ENABLED=true
-      - KC_HTTP_PORT=8080
-      - KC_HTTPS_PORT=8443
-      - KEYCLOAK_ADMIN=admin
-      - KEYCLOAK_ADMIN_PASSWORD=okstar
-      - KEYCLOAK_SAME_SITE_COOKIES=true
-    volumes:
-      - /etc/localtime:/etc/localtime
-    ports:
-      - 8080:8080
-      - 8443:8443
-    restart: unless-stopped
-    depends_on:
-      - db
-      - apacheds
-    healthcheck:  
-      test: ["CMD", "curl", "-f", "http://localhost:9000/health/live"]  
-      interval: 10s  
-      timeout: 10s
-      retries: 10  
 
-  ok-openfire:
-    build:
-      context: ./openfire
-    restart: unless-stopped
-    volumes:
-      - ${DATA_DIR}/ok-openfire:/home/openfire
-      - ${DATA_DIR}/ok-openfire/logs:/var/log/openfire
-    ports:
-      - 5222:5222
-      - 9090:9090
-      - 7443:7443
-      - 4443:4443
-      - 8180:8180
-      - 10000:10000
-    depends_on:
-      - db
-      - apacheds
-
-  ok-stack:
-    image: "okstarorg/${VERSION}"
-    restart: unless-stopped
-    ports:
-      - 1080:80
-
-    volumes:
-      - ${DATA_DIR}/ok-stack/logs:/home/okstar/ok-stack-backend/logs
-      - /var/run/docker.sock:/var/run/docker.sock
-    depends_on:
-      - db
-      - apacheds
-      - keycloak

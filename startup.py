@@ -2,10 +2,10 @@
 import sys
 import os
 import subprocess
-import platform
-from platform import OsInfo
+# import platform
+# from platform import OsInfo
 
-def upDepends(o: OsInfo, build: bool):
+def upDepends(build: bool):
     print("Startup ...")
     os.chdir("depends")
 
@@ -19,11 +19,12 @@ def upDepends(o: OsInfo, build: bool):
 
 
 def start(build: bool):
-    result = upDepends(platform.getOs(), build)
+    result = upDepends(build)
     if(not result):
         print("Start failed.")
     else:
         print("Started successfully.")
+
 
 if(len(sys.argv) > 1 and sys.argv[1]=='--build'):
     start(True)
